@@ -11,3 +11,6 @@ class Database():
 
     def get_instance(self):
         return self.client
+
+    def get_all_model_stats(self):
+        return self.client['finance']['models'].find({}, {'model': 0})
