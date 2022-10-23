@@ -1,12 +1,11 @@
-import ray
 import numpy as np
 
 class HyperParameter:
-    def __init__(self, value_min, value_max, value_step):
+    def __init__(self, value_min, value_max, value_step, value=None):
         self.value_min = value_min
         self.value_max = value_max
         self.value_step = value_step
-        self.value = None
+        self.value = value_min if value is None else value
         self.prev_values = []
 
     def get_random_value(self):
@@ -22,13 +21,3 @@ class HyperParameter:
             else:
                 self.value += self.value_step
         return self.value
-
-class Tuner():
-    def __init__(self, model_builder, data_generator, objective):
-        self.model_builder = model_builder
-        self.data_generator = data_generator
-        self.objecive = objective
-        self.history = []
-
-    def search(self):
-        pass

@@ -17,60 +17,6 @@ default_indicators = {'rsi_period': 30, 'vwap_period': 46, 'atr_period': 39, 'ma
 
 # 1.0
 # {'rsi_period': 42, 'vwap_period': 54, 'atr_period': 50, 'macd_short': 43, 'macd_long': 53, 'macd_signal': 9, 'bb_period': 4, 'std': 16}
-# --------------------------------------------------
-# 0.4838709533214569
-# {'rsi_period': 30, 'vwap_period': 46, 'atr_period': 39, 'macd_short': 21, 'macd_long': 4, 'macd_signal': 21, 'bb_period': 4, 'std': 33}
-# --------------------------------------------------
-# 0.43790850043296814
-# {'rsi_period': 56, 'vwap_period': 38, 'atr_period': 49, 'macd_short': 38, 'macd_long': 41, 'macd_signal': 46, 'bb_period': 59, 'std': 25}
-# --------------------------------------------------
-# 0.42298850417137146
-# {'rsi_period': 50, 'vwap_period': 39, 'atr_period': 53, 'macd_short': 33, 'macd_long': 32, 'macd_signal': 47, 'bb_period': 44, 'std': 18}
-# --------------------------------------------------
-# 0.4182879328727722
-# {'rsi_period': 25, 'vwap_period': 33, 'atr_period': 43, 'macd_short': 16,'macd_long': 52, 'macd_signal': 14, 'bb_period': 45, 'std': 56}
-# --------------------------------------------------
-# 0.4159544110298157
-# {'rsi_period': 58, 'vwap_period': 47, 'atr_period': 56, 'macd_short': 25, 'macd_long': 39, 'macd_signal': 51, 'bb_period': 51, 'std': 59}
-# --------------------------------------------------
-# 0.41434264183044434
-# {'rsi_period': 17, 'vwap_period': 26, 'atr_period': 54, 'macd_short': 47, 'macd_long': 28, 'macd_signal': 44, 'bb_period': 50, 'std': 59}
-# --------------------------------------------------
-# 0.40869563817977905
-# {'rsi_period': 18, 'vwap_period': 60, 'atr_period': 28, 'macd_short': 48, 'macd_long': 51, 'macd_signal': 36, 'bb_period': 51, 'std': 49}
-# --------------------------------------------------
-# 0.40694788098335266
-# {'rsi_period': 18, 'vwap_period': 40, 'atr_period': 10, 'macd_short': 47, 'macd_long': 57, 'macd_signal': 11, 'bb_period': 51, 'std': 19}
-# --------------------------------------------------
-# 0.40126582980155945
-# {'rsi_period': 59, 'vwap_period': 52, 'atr_period': 13, 'macd_short': 45, 'macd_long': 25, 'macd_signal': 25, 'bb_period': 53, 'std': 9}
-# --------------------------------------------------
-# 0.3985764980316162
-# {'rsi_period': 55, 'vwap_period': 46, 'atr_period': 14, 'macd_short': 14, 'macd_long': 38, 'macd_signal': 37, 'bb_period': 46, 'std': 34}
-# --------------------------------------------------
-# 0.3962264060974121
-# {'rsi_period': 25, 'vwap_period': 26, 'atr_period': 55, 'macd_short': 32, 'macd_long': 59, 'macd_signal': 29, 'bb_period': 60, 'std': 24}
-# --------------------------------------------------
-# 0.395225465297699
-# {'rsi_period': 29, 'vwap_period': 37, 'atr_period': 14, 'macd_short': 24, 'macd_long': 46, 'macd_signal': 42, 'bb_period': 40, 'std': 38}
-# --------------------------------------------------
-# 0.39491915702819824
-# {'rsi_period': 49, 'vwap_period': 60, 'atr_period': 54, 'macd_short': 39, 'macd_long': 32, 'macd_signal': 29, 'bb_period': 42, 'std': 5}
-# --------------------------------------------------
-# 0.39281943440437317
-# {'rsi_period': 41, 'vwap_period': 38, 'atr_period': 44, 'macd_short': 47, 'macd_long': 31, 'macd_signal': 48, 'bb_period': 53, 'std': 43}
-# --------------------------------------------------
-# 0.3880099952220917
-# {'rsi_period': 47, 'vwap_period': 38, 'atr_period': 45, 'macd_short': 12, 'macd_long': 30, 'macd_signal': 57, 'bb_period': 57, 'std': 22}
-# --------------------------------------------------
-# 0.3867822289466858
-# {'rsi_period': 31, 'vwap_period': 45, 'atr_period': 28, 'macd_short': 18, 'macd_long': 56, 'macd_signal': 21, 'bb_period': 51, 'std': 45}
-# --------------------------------------------------
-# 0.3480663001537323
-# {'rsi_period': 60, 'vwap_period': 26, 'atr_period': 38, 'macd_short': 27, 'macd_long': 58, 'macd_signal': 19, 'bb_period': 45, 'std': 32}
-
-
-best_result = 0.4182879328727722
 
 # Ue when fine tuning a model
 def train_generator_fixed(data, lookback, X, Y, is_buy_indicator=True, valid_days=None):
@@ -198,17 +144,17 @@ def calculate_indicators(df, indicators):
             # mean   = round(selection['mean'], DATA_TO_DECIMAL)
             # fd_mean = fractional_difference(mean, 0.5, 0.05)
             # returns = close.rolling(2).apply(lambda x: (x.iloc[1] - x.iloc[0]) / x.iloc[0] * 100).fillna(0)
-            std = close.rolling(indicators['std']).apply(lambda x: np.std(x))
+            std = close.rolling(indicators['std'].value).apply(lambda x: np.std(x))
             # pct_change = np.cumsum(returns)
 
             # Calculate Indicators
             # day_index = pd.Series(data = [day_number] * len(close), index = selection.index, name='index_day')
-            rsi = RSIIndicator(close, window=indicators['rsi_period']).rsi() / 100
-            vwap = VolumeWeightedAveragePrice(high, low, close, raw_volume, window=indicators['vwap_period']).volume_weighted_average_price()
+            rsi = RSIIndicator(close, window=indicators['rsi_period'].value).rsi() / 100
+            vwap = VolumeWeightedAveragePrice(high, low, close, raw_volume, window=indicators['vwap_period'].value).volume_weighted_average_price()
             # cci = CCIIndicator(high, low, close, window=cci_period).cci()
-            macd = MACD(close, indicators['macd_long'], indicators['macd_short'], indicators['macd_signal']).macd()
-            atr = AverageTrueRange(high, low, close, window=indicators['atr_period']).average_true_range()
-            bb = BollingerBands(close, indicators['bb_period'])
+            macd = MACD(close, indicators['macd_long'].value, indicators['macd_short'].value, indicators['macd_signal'].value).macd()
+            atr = AverageTrueRange(high, low, close, window=indicators['atr_period'].value).average_true_range()
+            bb = BollingerBands(close, indicators['bb_period'].value)
 
             # Calculate Reward
             # r_series = pd.Series(pct_change.iloc[::-1].values)
