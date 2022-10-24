@@ -1,4 +1,5 @@
 import threading
+from bson import ObjectId
 
 import numpy as np
 from pymongo import MongoClient
@@ -32,9 +33,10 @@ class Database():
         stats = self.get_stats()
         results = self.client.finance.models.find({'metrics.precision': {'$gt':stats['mean'] + stats['std']}, }, {'model': 0})
         ids = np.random.choice([x['_id'] for x in results], count)
-        ids = [str(x) for x in ids]
+        ids = [ObjectId(str(x)) for x in ids]
         results = self.get_instance().finance.models.find({'_id': {'$in': ids}})
-        return list(results)
+        results = list(results)
+        return results
 
     def get_stats(self):
         self.stats_lock.acquire()
