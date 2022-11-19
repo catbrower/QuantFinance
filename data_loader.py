@@ -46,20 +46,22 @@ def train_generator_fixed(data, lookback, X, Y, is_buy_indicator=True, valid_day
 
 # use for fast training at the cost of accuracy
 # TODO google ways to improve accuracy while using batching
-def batch_train_generator_fixed(data, lookback, X, Y, batch_size, is_buy_indicator=True, valid_days=None, num_days=None):
+def batch_train_generator_fixed(data, lookback, X, Y, batch_size, is_buy_indicator=True, valid_days=None, num_days=None, max_batches=float('inf')):
     generator = train_generator_fixed(
                 data,
                 lookback,
                 X, Y,
                 is_buy_indicator=is_buy_indicator,
                 valid_days=valid_days)
-    while True:
+    batch_count = 0
+    while batch_count < max_batches:
         x_batch = []
         y_batch = []
         for _ in range(batch_size):
             X, Y = generator.__next__()
             x_batch.append(X[0])
             y_batch.append(Y)
+        batch_count += 1
         yield np.array(x_batch), np.array(y_batch)
 
 # prune the reward metric to remove noise

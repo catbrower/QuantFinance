@@ -50,8 +50,8 @@ def deep_fixed_lstm(lookback, num_inputs):
 
 def deep_dense(hyperparams, lookback, num_inputs, steps_per_epoch, output_bias=None):
     # Get hyperparameters
-    num_layers = hyperparams['num_layers']['value']
-    threshold = hyperparams['threshold']['value']
+    num_layers = hyperparams['num_layers'].value
+    threshold = hyperparams['threshold'].value
 
     # layer_widths = []
     # for i in range(num_layers):

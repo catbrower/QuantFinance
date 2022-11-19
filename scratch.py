@@ -13,5 +13,5 @@ indicators = {
     'std': HyperParameter(2, 60, 1, value=33)
 }
 
-tuner = Tuner([x for x in indicators], 'binary_reward_buy', indicators)
+tuner = Tuner(indicators, 'binary_reward_buy')
 tuner.search(1)
