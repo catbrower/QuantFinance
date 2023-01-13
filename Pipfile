@@ -10,6 +10,7 @@ keras-tuner = "*"
 seaborn = "*"
 tensorflow-addons = "*"
 pymongo = {extras = ["srv"], version = "*"}
+pandas = "*"
 
 [dev-packages]
 
