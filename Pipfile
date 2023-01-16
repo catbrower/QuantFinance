@@ -11,8 +11,11 @@ seaborn = "*"
 tensorflow-addons = "*"
 pymongo = {extras = ["srv"], version = "*"}
 pandas = "*"
+pywavelets = "*"
 
 [dev-packages]
+jupyter = "*"
+notebook = "*"
 
 [requires]
 python_version = "3.8"
