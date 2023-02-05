@@ -12,6 +12,10 @@ tensorflow-addons = "*"
 pymongo = {extras = ["srv"], version = "*"}
 pandas = "*"
 pywavelets = "*"
+sklearn = "*"
+scikit-learn = "*"
+matplotlib = "*"
+pyportfolioopt = "*"
 
 [dev-packages]
 jupyter = "*"

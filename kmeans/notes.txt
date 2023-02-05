@@ -1,0 +1,2 @@
+TODO: in addition to recording label data, record the cov matrix. It's apparent that sometimes stocks will
+switch groyps, is this related to llow correlation? Do stocks nearer to the centroids not change groups as much?
