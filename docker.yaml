@@ -1,0 +1,32 @@
+version: '3.7'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile-server
+    command: python master_server.py
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/app/config
+      - ./resources:/app/resources
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile-worker
+    command: python worker_server.py
+    ports:
+      - "8001-8100:8001-8100"
+    volumes:
+      - ./configs:/app/config
+      - ./resources:/app/resources
+    deploy:
+      replicas: 5
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      restart_policy:
+        condition: on-failure
