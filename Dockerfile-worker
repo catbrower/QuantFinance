@@ -1,0 +1,11 @@
+FROM python:3.8
+
+WORKDIR /app
+
+COPY worker_server.py .
+COPY Pipfile* .
+
+RUN apt-get update && apt-get install -y python3-pip && pip3 install virtualenv pipenv
+# RUN cd /app && pipenv install
+
+CMD ["python3", "worker-server.py"]
