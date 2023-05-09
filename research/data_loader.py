@@ -220,7 +220,7 @@ def calculate_indicators(df, indicators):
 # Indicators is a dictionary describing what to calculate
 # for use with daily data, probably won't work for forex
 # reward_signal_no_position_width: when calculating the reward signal, how large should the no position area be
-def  load_data_dict(df, indicators, use_cached=False, reward_signal_no_position_width=0.1):
+def  load_data_dict(indicators, use_cached=False, reward_signal_no_position_width=0.1):
     if use_cached:
         return pd.read_csv('data_cache.csv')
         
@@ -235,14 +235,14 @@ def  load_data_dict(df, indicators, use_cached=False, reward_signal_no_position_
     # result = pd.Series(index=df['time'])
     # result.index = dataframe.index
     results['index_day'] = pd.Series(dtype=int)
-    results['mean'] = df[['open', 'high', 'low', 'close']].mean(axis=1)
+    results['mean'] = results[['open', 'high', 'low', 'close']].mean(axis=1)
 
-    results['open']  = np.log(df['open'])
-    results['high']  = np.log(df['high'])
-    results['low']   = np.log(df['low'])
-    results['close'] = np.log(df['close'])
-    end_date = max(df.index)
-    date = min(df.index)
+    results['open']  = np.log(results['open'])
+    results['high']  = np.log(results['high'])
+    results['low']   = np.log(results['low'])
+    results['close'] = np.log(results['close'])
+    end_date = max(results.index)
+    date = min(results.index)
     next_date = date + timedelta(days = 1)
     day_number = 0
 
@@ -250,16 +250,16 @@ def  load_data_dict(df, indicators, use_cached=False, reward_signal_no_position_
     while date < end_date:
         # data_selection
         # Calculate daily % value change
-        selection = df[(df.index >= date) & (df.index < next_date)]
+        selection = results[(results.index >= date) & (results.index < next_date)]
 
         # Skip weekends + holidays
         if len(selection) == 390:
             if prev_date is None:
-                df.loc[selection.index, 'raw_volume'] = selection['volume'].values
+                results.loc[selection.index, 'raw_volume'] = selection['volume'].values
                 prev_date = date
                 continue
 
-            prev_selection = df[(df.index >= prev_date) & (df.index < prev_date + timedelta(days=1))]
+            prev_selection = results[(results.index >= prev_date) & (results.index < prev_date + timedelta(days=1))]
 
             # Define raw values
             raw_open   = selection['open']
@@ -318,12 +318,14 @@ def  load_data_dict(df, indicators, use_cached=False, reward_signal_no_position_
                     results.loc[selection.index, f'vwap_%d' % indicator.value] = vwap
                 elif indicator['name'] == 'macd':
                     macd = MACD(close, indicator['period_long'], indicator['period_short'], indicator['period_signal']).macd()
+                    results.loc[selection.index, f'macd_%d' % indicator.value] = macd
                 elif indicator['name'] == 'atr':
                     atr = AverageTrueRange(high, low, close, window=indicator['period']).average_true_range()
                     results.loc[selection.index, f'atr_%d' % indicator.value] = atr
                 elif indicator['name'] == 'bb':
                     bb = BollingerBands(close, indicators['bb'])
-                    # results.loc[selection.index, f'bb_%d' % indicator.value] = bb
+                    results.loc[selection.index, f'bb_%d_hband' % indicator.value] = bb.bollinger_hband_indicator()
+                    results.loc[selection.index, f'bb_%d_lband' % indicator.value] = bb.bollinger_lband_indicator()
                 else:
                     raise Exception(f'Unknown indiator: %s' % indicator.name)
                 # day_index = pd.Series(data = [day_number] * len(close), index = selection.index, name='index_day')

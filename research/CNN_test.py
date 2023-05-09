@@ -5,6 +5,8 @@ from data_loader import *
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
 
+from research.Indicators import IndicatorsFactory 
+
 columns = [
     # 'pct_mean',
     'volume',
@@ -17,26 +19,22 @@ columns = [
     'std'
 ]
 
-def build_indicator_simple(name, period):
-    return {
-        'name': name,
-        'period': period
-    }
-
-def build_indicator_macd(period_long, period_short, period_signal):
-    return {
-        'name': 'macd',
-        'period_long': period_long,
-        'period_short': period_short,
-        'period_signal': period_signal
-    }
-
 def create_training_sets():
-    num_inputs = len(columns)
+    indicators = [
+        IndicatorsFactory.standard_deviation(30),
+        IndicatorsFactory.relative_strength_index(30),
+        IndicatorsFactory.volume_weighted_average_price(30),
+        IndicatorsFactory.average_true_range(30),
+        IndicatorsFactory.bollinger_bands(30),
+        IndicatorsFactory.moving_average_convergence_divergence(30, 15, 22)
+    ]
+
+    num_inputs = sum([len(x['signal_columns']) for x in indicators])
+
     total_days = 248
     num_days = 248
 
-    data = load_data_dict()
+    data = load_data_dict(indicators)
 
 
 
