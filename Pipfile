@@ -16,10 +16,15 @@ sklearn = "*"
 scikit-learn = "*"
 matplotlib = "*"
 pyportfolioopt = "*"
+flask = "*"
+sqlalchemy = "*"
+flask-sqlalchemy = "*"
+ta = "*"
 
 [dev-packages]
 jupyter = "*"
 notebook = "*"
+ipykernel = "*"
 
 [requires]
 python_version = "3.8"

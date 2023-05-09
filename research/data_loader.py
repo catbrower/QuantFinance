@@ -125,12 +125,12 @@ def calculate_indicators(df, indicators):
             prev_selection = df[(df.index >= prev_date) & (df.index < prev_date + timedelta(days=1))]
 
             # # open = selection['open']
-            raw_open = selection['open']
-            raw_high = selection['high']
-            raw_low = selection['low']
-            raw_close = selection['close']
+            raw_open   = selection['open']
+            raw_high   = selection['high']
+            raw_low    = selection['low']
+            raw_close  = selection['close']
             raw_volume = selection['volume']
-            raw_mean = selection[['open', 'high', 'low', 'close']].mean(axis=1)
+            raw_mean   = selection[['open', 'high', 'low', 'close']].mean(axis=1)
             high   = to_pct(selection['high']).fillna(0)
             low    = to_pct(selection['low']).fillna(0)
             close  = to_pct(selection['close']).fillna(0)
@@ -146,17 +146,17 @@ def calculate_indicators(df, indicators):
             # mean   = round(selection['mean'], DATA_TO_DECIMAL)
             # fd_mean = fractional_difference(mean, 0.5, 0.05)
             # returns = close.rolling(2).apply(lambda x: (x.iloc[1] - x.iloc[0]) / x.iloc[0] * 100).fillna(0)
-            std = close.rolling(indicators['std'].value).apply(lambda x: np.std(x))
             # pct_change = np.cumsum(returns)
 
             # Calculate Indicators
             # day_index = pd.Series(data = [day_number] * len(close), index = selection.index, name='index_day')
-            rsi = RSIIndicator(close, window=indicators['rsi_period'].value).rsi() / 100
-            vwap = VolumeWeightedAveragePrice(high, low, close, raw_volume, window=indicators['vwap_period'].value).volume_weighted_average_price()
+            std = close.rolling(indicators['std']).apply(lambda x: np.std(x))
+            rsi = RSIIndicator(close, window=indicators['rsi_period']).rsi() / 100
+            vwap = VolumeWeightedAveragePrice(high, low, close, raw_volume, window=indicators['vwap_period']).volume_weighted_average_price()
             # cci = CCIIndicator(high, low, close, window=cci_period).cci()
-            macd = MACD(close, indicators['macd_long'].value, indicators['macd_short'].value, indicators['macd_signal'].value).macd()
-            atr = AverageTrueRange(high, low, close, window=indicators['atr_period'].value).average_true_range()
-            bb = BollingerBands(close, indicators['bb_period'].value)
+            macd = MACD(close, indicators['macd_long'], indicators['macd_short'], indicators['macd_signal']).macd()
+            atr = AverageTrueRange(high, low, close, window=indicators['atr_period']).average_true_range()
+            bb = BollingerBands(close, indicators['bb_period'])
 
             # Calculate Reward
             # r_series = pd.Series(pct_change.iloc[::-1].values)
@@ -215,6 +215,162 @@ def calculate_indicators(df, indicators):
     df = df[df['index_day'] < float('inf')]
     df = df.astype({'index_day': int})
     return df
+
+# Calculates indicators
+# Indicators is a dictionary describing what to calculate
+# for use with daily data, probably won't work for forex
+# reward_signal_no_position_width: when calculating the reward signal, how large should the no position area be
+def  load_data_dict(df, indicators, use_cached=False, reward_signal_no_position_width=0.1):
+    if use_cached:
+        return pd.read_csv('data_cache.csv')
+        
+    results = pd.read_csv('data/spy_stock_minute_2019-01-01_2020-01-01.csv')
+    results['time'] = pd.to_datetime(results['time'], format='%Y-%m-%d %H:%M:%S')
+    results = results.set_index('time')
+
+    reward_period = 30
+    reward_threshold = 0.005
+
+    # df = df.reset_index()
+    # result = pd.Series(index=df['time'])
+    # result.index = dataframe.index
+    results['index_day'] = pd.Series(dtype=int)
+    results['mean'] = df[['open', 'high', 'low', 'close']].mean(axis=1)
+
+    results['open']  = np.log(df['open'])
+    results['high']  = np.log(df['high'])
+    results['low']   = np.log(df['low'])
+    results['close'] = np.log(df['close'])
+    end_date = max(df.index)
+    date = min(df.index)
+    next_date = date + timedelta(days = 1)
+    day_number = 0
+
+    prev_date = None
+    while date < end_date:
+        # data_selection
+        # Calculate daily % value change
+        selection = df[(df.index >= date) & (df.index < next_date)]
+
+        # Skip weekends + holidays
+        if len(selection) == 390:
+            if prev_date is None:
+                df.loc[selection.index, 'raw_volume'] = selection['volume'].values
+                prev_date = date
+                continue
+
+            prev_selection = df[(df.index >= prev_date) & (df.index < prev_date + timedelta(days=1))]
+
+            # Define raw values
+            raw_open   = selection['open']
+            raw_high   = selection['high']
+            raw_low    = selection['low']
+            raw_close  = selection['close']
+            raw_volume = selection['volume']
+            raw_mean   = selection[['open', 'high', 'low', 'close']].mean(axis=1)
+            high   = to_pct(selection['high']).fillna(0)
+            low    = to_pct(selection['low']).fillna(0)
+            close  = to_pct(selection['close']).fillna(0)
+            mean   = to_pct(raw_mean)
+            volume = (raw_volume - prev_selection['raw_volume'][0:-1].mean()) / (prev_selection['raw_volume'][0:-1].std() * 10)
+            
+            # Determine Spread
+            mean_spread = selection[['askopen', 'askhigh', 'asklow', 'askclose']].mean(axis=1) - selection[['bidopen', 'bidhigh', 'bidlow', 'bidclose']].mean(axis=1)
+            prev_mean_spread = prev_selection[['askopen', 'askhigh', 'asklow', 'askclose']].mean(axis=1) - prev_selection[['bidopen', 'bidhigh', 'bidlow', 'bidclose']].mean(axis=1)
+            mean_spread = mean_spread - prev_mean_spread.mean()
+            mean_spread = mean_spread / (prev_mean_spread.std() * 10)
+
+            # mean   = round(selection['mean'], DATA_TO_DECIMAL)
+            # fd_mean = fractional_difference(mean, 0.5, 0.05)
+            # returns = close.rolling(2).apply(lambda x: (x.iloc[1] - x.iloc[0]) / x.iloc[0] * 100).fillna(0)
+            # pct_change = np.cumsum(returns)
+
+            # Calculate reward signal
+            # r_series is the reverse of the original series
+            def get_reward_value(x):
+                if x > reward_signal_no_position_width:
+                    return 1
+                elif x < -reward_signal_no_position_width:
+                    return -1
+                else:
+                    return 0
+                
+            dwt = dwt_denoise(close, level=4)
+            r_series = pd.Series(dwt[::-1])
+            r_series = pd.Series(r_series.rolling(reward_period).mean().iloc[::-1].values - reward_threshold)
+            
+            reward_buy = (r_series - close.values).fillna(0).values
+            binary_reward_buy = [get_reward_value(x) for x in reward_buy]
+
+            reward_sell = (close.values - r_series).fillna(0).values
+            binary_reward_sell = [get_reward_value(x) for x in reward_sell]
+
+            # Calculate Indicators
+            for indicator in indicators:
+                if indicator['name'] == 'std':
+                    std = close.rolling(indicator['period']).apply(lambda x: np.std(x))
+                    results.loc[selection.index, f'std_%d' % indicator.value] = std
+                elif indicator['name'] == 'rsi':
+                    rsi = RSIIndicator(close, window=indicator['period']).rsi() / 100
+                    results.loc[selection.index, f'rsi_%d' % indicator.value] = rsi
+                elif indicator['name'] == 'vwap':
+                    vwap = VolumeWeightedAveragePrice(high, low, close, raw_volume, window=indicator['period']).volume_weighted_average_price()
+                    results.loc[selection.index, f'vwap_%d' % indicator.value] = vwap
+                elif indicator['name'] == 'macd':
+                    macd = MACD(close, indicator['period_long'], indicator['period_short'], indicator['period_signal']).macd()
+                elif indicator['name'] == 'atr':
+                    atr = AverageTrueRange(high, low, close, window=indicator['period']).average_true_range()
+                    results.loc[selection.index, f'atr_%d' % indicator.value] = atr
+                elif indicator['name'] == 'bb':
+                    bb = BollingerBands(close, indicators['bb'])
+                    # results.loc[selection.index, f'bb_%d' % indicator.value] = bb
+                else:
+                    raise Exception(f'Unknown indiator: %s' % indicator.name)
+                # day_index = pd.Series(data = [day_number] * len(close), index = selection.index, name='index_day')
+                # cci = CCIIndicator(high, low, close, window=cci_period).cci()
+                
+            # Set new values
+            results.loc[selection.index, 'raw_open'] = raw_open
+            results.loc[selection.index, 'raw_high'] = raw_high
+            results.loc[selection.index, 'raw_low'] = raw_low
+            results.loc[selection.index, 'raw_close'] = raw_close
+            results.loc[selection.index, 'raw_mean']  = raw_mean
+            results.loc[selection.index, 'raw_volume'] = raw_volume
+            results.loc[selection.index, 'high'] = high
+            results.loc[selection.index, 'low'] = low
+            results.loc[selection.index, 'close'] = close
+            results.loc[selection.index, 'mean'] = mean
+            results.loc[selection.index, 'volume'] = volume
+            results.loc[selection.index, 'index_day'] = int(day_number)
+            results.loc[selection.index, 'index_minute'] = np.arange(len(selection))
+            results.loc[selection.index, 'mean_spread'] = mean_spread
+            # df.loc[selection.index, 'returns'] = returns
+            # df.loc[pct_change.index, 'pct_mean'] = pct_change
+            # results.loc[selection.index, 'std'] = std
+            # results.loc[selection.index, 'rsi'] = rsi
+            # results.loc[selection.index, 'vwap'] = vwap
+            # df.loc[selection.index, 'cci'] = cci
+            # results.loc[selection.index, 'macd'] = macd
+            # results.loc[selection.index, 'atr'] = atr
+            # results.loc[selection.index, 'bb_hband'] = bb.bollinger_hband_indicator()
+            # results.loc[selection.index, 'bb_lband'] = bb.bollinger_lband_indicator()
+            # results.loc[selection.index, 'dwt'] = dwt
+            results.loc[selection.index, 'buy'] = reward_buy
+            results.loc[selection.index, 'binary_reward_buy'] = binary_reward_buy
+            results.loc[selection.index, 'reward_sell'] = reward_sell
+            results.loc[selection.index, 'binary_reward_reward_sell'] = binary_reward_sell
+
+            prev_date = date
+            day_number += 1
+
+        date += timedelta(days = 1)
+        next_date += timedelta(days = 1)
+
+    # Filter out any rows where index_day == nan
+    print('Data loaded')
+    results = results[results['index_day'] < float('inf')]
+    results = results.astype({'index_day': int})
+    return results
 
 def load_data(use_cached=False, indicators=default_indicators):
     if use_cached:
