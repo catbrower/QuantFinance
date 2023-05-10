@@ -20,6 +20,7 @@ flask = "*"
 sqlalchemy = "*"
 flask-sqlalchemy = "*"
 ta = "*"
+keras-tcn = "*"
 
 [dev-packages]
 jupyter = "*"

@@ -9,7 +9,7 @@ from ta.volume import VolumeWeightedAveragePrice
 from ta.trend import CCIIndicator, MACD
 from ta.volatility import AverageTrueRange, BollingerBands
 
-from math_util import *
+from Util import *
 
 DATA_TO_DECIMAL = 4
 
@@ -217,10 +217,10 @@ def calculate_indicators(df, indicators):
     return df
 
 # Calculates indicators
-# Indicators is a dictionary describing what to calculate
+# Indicators: is a list of Indicator objects
 # for use with daily data, probably won't work for forex
 # reward_signal_no_position_width: when calculating the reward signal, how large should the no position area be
-def  load_data_dict(indicators, use_cached=False, reward_signal_no_position_width=0.1):
+def  load_data_dict(indicators, use_cached=False, reward_signal_no_position_width=0.01):
     if use_cached:
         return pd.read_csv('data_cache.csv')
         
@@ -299,37 +299,13 @@ def  load_data_dict(indicators, use_cached=False, reward_signal_no_position_widt
             r_series = pd.Series(dwt[::-1])
             r_series = pd.Series(r_series.rolling(reward_period).mean().iloc[::-1].values - reward_threshold)
             
-            reward_buy = (r_series - close.values).fillna(0).values
-            binary_reward_buy = [get_reward_value(x) for x in reward_buy]
-
-            reward_sell = (close.values - r_series).fillna(0).values
-            binary_reward_sell = [get_reward_value(x) for x in reward_sell]
+            reward = (r_series - close.values).fillna(0).values
+            reward = [get_reward_value(x) for x in reward]
 
             # Calculate Indicators
             for indicator in indicators:
-                if indicator['name'] == 'std':
-                    std = close.rolling(indicator['period']).apply(lambda x: np.std(x))
-                    results.loc[selection.index, f'std_%d' % indicator.value] = std
-                elif indicator['name'] == 'rsi':
-                    rsi = RSIIndicator(close, window=indicator['period']).rsi() / 100
-                    results.loc[selection.index, f'rsi_%d' % indicator.value] = rsi
-                elif indicator['name'] == 'vwap':
-                    vwap = VolumeWeightedAveragePrice(high, low, close, raw_volume, window=indicator['period']).volume_weighted_average_price()
-                    results.loc[selection.index, f'vwap_%d' % indicator.value] = vwap
-                elif indicator['name'] == 'macd':
-                    macd = MACD(close, indicator['period_long'], indicator['period_short'], indicator['period_signal']).macd()
-                    results.loc[selection.index, f'macd_%d' % indicator.value] = macd
-                elif indicator['name'] == 'atr':
-                    atr = AverageTrueRange(high, low, close, window=indicator['period']).average_true_range()
-                    results.loc[selection.index, f'atr_%d' % indicator.value] = atr
-                elif indicator['name'] == 'bb':
-                    bb = BollingerBands(close, indicators['bb'])
-                    results.loc[selection.index, f'bb_%d_hband' % indicator.value] = bb.bollinger_hband_indicator()
-                    results.loc[selection.index, f'bb_%d_lband' % indicator.value] = bb.bollinger_lband_indicator()
-                else:
-                    raise Exception(f'Unknown indiator: %s' % indicator.name)
-                # day_index = pd.Series(data = [day_number] * len(close), index = selection.index, name='index_day')
-                # cci = CCIIndicator(high, low, close, window=cci_period).cci()
+                for signal in indicator.calculate(selection):
+                    results.loc[selection.index, signal['name']] = signal['value']
                 
             # Set new values
             results.loc[selection.index, 'raw_open'] = raw_open
@@ -345,22 +321,8 @@ def  load_data_dict(indicators, use_cached=False, reward_signal_no_position_widt
             results.loc[selection.index, 'volume'] = volume
             results.loc[selection.index, 'index_day'] = int(day_number)
             results.loc[selection.index, 'index_minute'] = np.arange(len(selection))
-            results.loc[selection.index, 'mean_spread'] = mean_spread
-            # df.loc[selection.index, 'returns'] = returns
-            # df.loc[pct_change.index, 'pct_mean'] = pct_change
-            # results.loc[selection.index, 'std'] = std
-            # results.loc[selection.index, 'rsi'] = rsi
-            # results.loc[selection.index, 'vwap'] = vwap
-            # df.loc[selection.index, 'cci'] = cci
-            # results.loc[selection.index, 'macd'] = macd
-            # results.loc[selection.index, 'atr'] = atr
-            # results.loc[selection.index, 'bb_hband'] = bb.bollinger_hband_indicator()
-            # results.loc[selection.index, 'bb_lband'] = bb.bollinger_lband_indicator()
-            # results.loc[selection.index, 'dwt'] = dwt
-            results.loc[selection.index, 'buy'] = reward_buy
-            results.loc[selection.index, 'binary_reward_buy'] = binary_reward_buy
-            results.loc[selection.index, 'reward_sell'] = reward_sell
-            results.loc[selection.index, 'binary_reward_reward_sell'] = binary_reward_sell
+            # results.loc[selection.index, 'mean_spread'] = mean_spread
+            results.loc[selection.index, 'reward'] = reward
 
             prev_date = date
             day_number += 1
