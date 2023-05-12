@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 from research.data_loader import *
 
+import tensorflow as tf
 from keras.models import Sequential
-from keras.layers import Input, Conv2D, MaxPool2D, Flatten, Dense
+from keras.layers import Input, Conv2D, MaxPool2D, Flatten, Dense, Reshape
 from tcn import TCN
 
 from Indicators import *
@@ -72,31 +73,46 @@ def create_fake_training_sets(lookback, train_split=0.75):
     test_Y = np.array([x['reward'].values[-1] for x in test])
     return train_X, train_Y, test_X, test_Y
 
+def reward_to_category(y):
+    result = []
+    for value in y:
+        if value[0] == -1:
+            result.append([1, 0, 0])
+        elif value[0] == 0:
+            result.append([0, 1, 0])
+        else:
+            result.append([0, 0, 1])
+    return np.array(result)
+
 lookback = 30
 # train_X, train_Y, test_X, test_Y = create_training_sets()
-train_X = np.load('data/tcn_trainx.npy')
-train_Y = np.load('data/tcn_trainy.npy')
+train_X = np.expand_dims(np.load('data/tcn_trainx.npy'), axis=3)
+train_Y = reward_to_category(np.load('data/tcn_trainy.npy'))
 test_X = np.load('data/tcn_testx.npy')
 test_Y = np.load('data/tcn_testy.npy')
 # train_X, train_Y, test_X, test_Y = create_fake_training_sets(lookback)
+# for the input shape: (n_images, x_shape, y_shape, channels)
+# this should be (1, lookback, # indicators, 1)
 shape = train_X[0].shape
 model = Sequential([
-    Input(shape=(1, 30, 7)),
+    Input(shape=(30, 7, 1)),
     Conv2D(16, 5),
     MaxPool2D(),
-    TCN(input_shape=shape,
-        kernel_size=3,
-        batch_size=len(train_X),
-        use_skip_connections=False,
-        use_batch_norm=False,
-        use_weight_norm=False,
-        use_layer_norm=False
-        ),
-    Dense(1, activation='tanh')
+    # TCN(input_shape=shape,
+    #     kernel_size=3,
+    #     batch_size=len(train_X),
+    #     use_skip_connections=False,
+    #     use_batch_norm=False,
+    #     use_weight_norm=False,
+    #     use_layer_norm=False
+    #     ),
+    Reshape((1, 208)),
+    TCN(16),
+    Dense(3, activation='sigmoid')
 ])
 model.summary()
 model.compile('adam', 'categorical_crossentropy')
 
-model.fit(train_X, train_Y, epochs=100, verbose=2)
+model.fit(train_X, train_Y, epochs=100)
 
 print()
