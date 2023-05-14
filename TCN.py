@@ -3,12 +3,14 @@ import pandas as pd
 from research.data_loader import *
 
 import tensorflow as tf
-from keras.models import Sequential
+from keras.models import Sequential, Model
 from keras.layers import Input, Conv2D, MaxPool2D, Flatten, Dense, Reshape
+from keras.metrics import BinaryAccuracy, Recall, Precision
+
 from tcn import TCN
 
 from Indicators import *
-from Util import flatten_list
+from Util import flatten_list, calculate_class_weights
 
 # returns train_X, train_Y, test_X, test_Y
 def create_training_sets(lookback=30, train_split = 0.75):
@@ -77,42 +79,50 @@ def reward_to_category(y):
     result = []
     for value in y:
         if value[0] == -1:
-            result.append([1, 0, 0])
+            result.append([1, 0])
         elif value[0] == 0:
-            result.append([0, 1, 0])
+            result.append([1, 0])
         else:
-            result.append([0, 0, 1])
+            result.append([0, 1])
     return np.array(result)
+
+def build_model(input_shape, num_outputs):
+    # (30, 7, 1)
+    inputs = Input(shape=input_shape)
+    x = Conv2D(16, 5)(inputs)
+    x = MaxPool2D()(x)
+    x = Reshape((1, np.prod(x.shape[1:])))(x)
+    x = TCN(16)(x)
+    x = Dense(num_outputs, activation='sigmoid')(x)
+
+    return Model(inputs=[inputs], outputs=[x])
 
 lookback = 30
 # train_X, train_Y, test_X, test_Y = create_training_sets()
 train_X = np.expand_dims(np.load('data/tcn_trainx.npy'), axis=3)
-train_Y = reward_to_category(np.load('data/tcn_trainy.npy'))
+train_Y = np.array([1 if x == 1 else 0 for x in np.load('data/tcn_trainy.npy')])
 test_X = np.load('data/tcn_testx.npy')
 test_Y = np.load('data/tcn_testy.npy')
 # train_X, train_Y, test_X, test_Y = create_fake_training_sets(lookback)
 # for the input shape: (n_images, x_shape, y_shape, channels)
 # this should be (1, lookback, # indicators, 1)
-shape = train_X[0].shape
-model = Sequential([
-    Input(shape=(30, 7, 1)),
-    Conv2D(16, 5),
-    MaxPool2D(),
-    # TCN(input_shape=shape,
-    #     kernel_size=3,
-    #     batch_size=len(train_X),
-    #     use_skip_connections=False,
-    #     use_batch_norm=False,
-    #     use_weight_norm=False,
-    #     use_layer_norm=False
-    #     ),
-    Reshape((1, 208)),
-    TCN(16),
-    Dense(3, activation='sigmoid')
-])
-model.summary()
-model.compile('adam', 'categorical_crossentropy')
 
-model.fit(train_X, train_Y, epochs=100)
+# TODO setup for custom loss in order to maximize recall
+# https://stackoverflow.com/questions/52695913/custom-loss-function-in-keras-to-penalize-false-negatives
+
+# TODO use clusting to label days
+
+class_weight = calculate_class_weights(train_Y)
+model = build_model((lookback, 7, 1), 1)
+model.summary()
+model.compile(optimizer='adam',
+              loss='binary_crossentropy',
+              metrics=[BinaryAccuracy(threshold=0.5), Recall(), Precision()])
+
+model.fit(
+    train_X,
+    train_Y,
+    class_weight=class_weight,
+    epochs=100)
 
 print()

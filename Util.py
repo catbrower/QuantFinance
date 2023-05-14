@@ -46,6 +46,14 @@ def generate_synthetic_ohlcv_data(num_bars, x, delta=0.25, dt=0.1):
 
     return result
 
+def calculate_class_weights(train_Y):
+    unique, counts = np.unique(train_Y.reshape(-1), return_counts=True)
+    class_weights = {}
+    for i in range(len(unique)):
+        class_weights[unique[i]] = 1.0 / counts[i]
+
+    return class_weights
+
 def adf_test(values):
     result = adfuller(values)
     print('-' * 10)
