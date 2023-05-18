@@ -3,40 +3,52 @@ import pandas as pd
 from research.data_loader import *
 
 import tensorflow as tf
+import tensorflow.keras.backend as K
 from keras.models import Sequential, Model
 from keras.layers import Input, Conv2D, MaxPool2D, Flatten, Dense, Reshape
-from keras.metrics import BinaryAccuracy, Recall, Precision
+from keras.metrics import BinaryAccuracy, Recall, Precision, TruePositives, TrueNegatives, FalsePositives, FalseNegatives
 
 from tcn import TCN
 
 from Indicators import *
 from Util import flatten_list, calculate_class_weights
 
+data_file_name = 'tcn_data'
+
 # returns train_X, train_Y, test_X, test_Y
-def create_training_sets(lookback=30, train_split = 0.75):
-    indicators = [
-        IndicatorStandardDeviation(30),
-        IndicatorRelativeStrengthIndex(30),
-        IndicatorVolumeWeightedAveragePrice(30),
-        IndicatorAverageTrueRange(30),
-        IndicatorBollingerBands(30),
-        IndicatorMovingAverageConvergenceDivergence(30, 15, 22)
-    ]
+def create_training_sets(lookback=30, train_split = 0.75, use_cached=False):
+    if not use_cached:
+        indicators = [
+            IndicatorMovingAverageConvergenceDivergence(30, 15, 22)
+        ]
 
-    x_columns = flatten_list([x.get_signal_names() for x in indicators])
-    y_columns = ['reward']
+        for i in range(5, 30):
+            indicators.append(IndicatorStandardDeviation(i))
+            indicators.append(IndicatorRelativeStrengthIndex(i))
+            indicators.append(IndicatorVolumeWeightedAveragePrice(i))
+            indicators.append(IndicatorAverageTrueRange(i))
+            indicators.append(IndicatorBollingerBands(i))
 
-    data = load_data_dict(indicators).dropna()
-    
-    # Gather samples
-    samples = []
-    for index_day in range(max(data['index_day'])):
-        for index_minute in range(int(min(data['index_minute'])), int(max(data['index_minute']) - lookback)):
-            samples.append(data[
-                (data['index_day'] == index_day) &
-                (data['index_minute'] > index_minute) &
-                (data['index_minute'] <= index_minute + lookback)
-                ])
+        x_columns = flatten_list([x.get_signal_names() for x in indicators])
+        y_columns = ['reward']
+
+        spy_data = load_data_dict(indicators, 'spy').dropna()
+        qqq_data = load_data_dict(indicators, 'qqq').dropna()
+        data = None
+        
+        # Gather samples
+        samples = []
+        for index_day in range(max(data['index_day'])):
+            for index_minute in range(int(min(data['index_minute'])), int(max(data['index_minute']) - lookback)):
+                samples.append(data[
+                    (data['index_day'] == index_day) &
+                    (data['index_minute'] > index_minute) &
+                    (data['index_minute'] <= index_minute + lookback)
+                    ])
+
+        np.save(f'data/%s' % data_file_name, samples)
+    else:
+        samples = np.load(f'data/%s.npy' % data_file_name)
 
     split_index = int(len(samples) * train_split)
     train = samples[0:split_index]
@@ -97,12 +109,46 @@ def build_model(input_shape, num_outputs):
 
     return Model(inputs=[inputs], outputs=[x])
 
+def binary_recall_specificity(y_true, y_pred, recall_weight, spec_weight, TP, TN, FP, FN):
+    TP.update_state(y_true, y_pred)
+    TN.update_state(y_true, y_pred)
+    FP.update_state(y_true, y_pred)
+    FN.update_state(y_true, y_pred)
+
+    # specificity = TN.result() / (TN.result() + FP.result() + K.epsilon())
+    # recall = TP.result() / (TP.result() + FN.result() + K.epsilon())
+
+    x = TP.result() / (FP.result() + TP.result())
+    y = TN.result() / (FN.result() + TN.result())
+    result = 1.0 - (recall_weight*x + spec_weight*y)
+    return y_pred * 0 + result
+    # return K.mean(K.equal(y_true, K.round(y_pred)), axis=-1) + y_pred * 0
+
+# Our custom loss' wrapper
+def custom_loss(recall_weight, spec_weight):
+    TP = TruePositives()
+    TN = TrueNegatives()
+    FP = FalsePositives()
+    FN = FalseNegatives()
+    
+    def recall_spec_loss(y_true, y_pred):
+        return binary_recall_specificity(
+            y_true,
+            y_pred,
+            recall_weight,
+            spec_weight,
+            TP, TN, FP, FN
+        )
+
+    # Returns the (y_true, y_pred) loss function
+    return recall_spec_loss
+
 lookback = 30
-# train_X, train_Y, test_X, test_Y = create_training_sets()
-train_X = np.expand_dims(np.load('data/tcn_trainx.npy'), axis=3)
-train_Y = np.array([1 if x == 1 else 0 for x in np.load('data/tcn_trainy.npy')])
-test_X = np.load('data/tcn_testx.npy')
-test_Y = np.load('data/tcn_testy.npy')
+train_X, train_Y, test_X, test_Y = create_training_sets(use_cached=False)
+# train_X = np.expand_dims(np.load('data/tcn_data.npy'), axis=3).astype(np.float32)
+# train_Y = np.array([1 if x == 1 else 0 for x in np.load('data/tcn_trainy.npy')]).astype(np.float32)
+# test_X = np.load('data/tcn_testx.npy').astype(np.float32)
+# test_Y = np.load('data/tcn_testy.npy').astype(np.float32)
 # train_X, train_Y, test_X, test_Y = create_fake_training_sets(lookback)
 # for the input shape: (n_images, x_shape, y_shape, channels)
 # this should be (1, lookback, # indicators, 1)
@@ -112,12 +158,14 @@ test_Y = np.load('data/tcn_testy.npy')
 
 # TODO use clusting to label days
 
+recall_weight = 0.8
 class_weight = calculate_class_weights(train_Y)
 model = build_model((lookback, 7, 1), 1)
 model.summary()
-model.compile(optimizer='adam',
-              loss='binary_crossentropy',
-              metrics=[BinaryAccuracy(threshold=0.5), Recall(), Precision()])
+model.compile(optimizer='sgd',
+            # loss=custom_loss(recall_weight=recall_weight, spec_weight=1-recall_weight),
+            loss="binary_crossentropy",
+            metrics=[Recall(), Precision(), TruePositives(), FalsePositives()])
 
 model.fit(
     train_X,

@@ -88,6 +88,9 @@ def prune_reward(data, prune_length=5):
 def to_pct(values):
     return np.cumsum(values.rolling(2).apply(lambda x: (x.iloc[1] - x.iloc[0]) / x.iloc[0] * 100))
 
+def column_name(ticker, name):
+    return f'%s_%s' % (ticker, name)
+
 # Calculate function over dataframe by day
 # return pd.Series
 def calculate_indicators(df, indicators):
@@ -220,13 +223,15 @@ def calculate_indicators(df, indicators):
 # Indicators: is a list of Indicator objects
 # for use with daily data, probably won't work for forex
 # reward_signal_no_position_width: when calculating the reward signal, how large should the no position area be
-def  load_data_dict(indicators, use_cached=False, reward_signal_no_position_width=0.01):
+def  load_data_dict(indicators, ticker, use_cached=False, reward_signal_no_position_width=0.01):
     if use_cached:
-        return pd.read_csv('data_cache.csv')
+        raise Exception('This doesnt work rn')
+        # return pd.read_csv('data_cache.csv')
         
-    results = pd.read_csv('data/spy_stock_minute_2019-01-01_2020-01-01.csv')
+    results = pd.read_csv(f'data/%s_stock_minute_2019-01-01_2020-01-01.csv' % ticker)
     results['time'] = pd.to_datetime(results['time'], format='%Y-%m-%d %H:%M:%S')
-    results = results.set_index('time')
+    results['ticker'] = ticker
+    results = results.set_index(['time', 'ticker'])
 
     reward_period = 30
     reward_threshold = 0.005
@@ -241,8 +246,8 @@ def  load_data_dict(indicators, use_cached=False, reward_signal_no_position_widt
     results['high']  = np.log(results['high'])
     results['low']   = np.log(results['low'])
     results['close'] = np.log(results['close'])
-    end_date = max(results.index)
-    date = min(results.index)
+    end_date = max(results.index.get_level_values('time'))
+    date = min(results.index.get_level_values('time'))
     next_date = date + timedelta(days = 1)
     day_number = 0
 
@@ -250,7 +255,7 @@ def  load_data_dict(indicators, use_cached=False, reward_signal_no_position_widt
     while date < end_date:
         # data_selection
         # Calculate daily % value change
-        selection = results[(results.index >= date) & (results.index < next_date)]
+        selection = results[(results.index.get_level_values('time') >= date) & (results.index.get_level_values('time') < next_date)]
 
         # Skip weekends + holidays
         if len(selection) == 390:
@@ -259,7 +264,7 @@ def  load_data_dict(indicators, use_cached=False, reward_signal_no_position_widt
                 prev_date = date
                 continue
 
-            prev_selection = results[(results.index >= prev_date) & (results.index < prev_date + timedelta(days=1))]
+            prev_selection = results[(results.index.get_level_values('time') >= prev_date) & (results.index.get_level_values('time') < prev_date + timedelta(days=1))]
 
             # Define raw values
             raw_open   = selection['open']
@@ -290,8 +295,8 @@ def  load_data_dict(indicators, use_cached=False, reward_signal_no_position_widt
             def get_reward_value(x):
                 if x > reward_signal_no_position_width:
                     return 1
-                elif x < -reward_signal_no_position_width:
-                    return -1
+                # elif x < -reward_signal_no_position_width:
+                #     return -1
                 else:
                     return 0
                 

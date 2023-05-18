@@ -21,6 +21,7 @@ sqlalchemy = "*"
 flask-sqlalchemy = "*"
 ta = "*"
 keras-tcn = "*"
+alive-progress = "*"
 
 [dev-packages]
 jupyter = "*"
