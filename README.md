@@ -1,5 +1,3 @@
-Welcome to my QuantFinance Project!
-
 This project contains my exploration of, and attempts to build a quantatative trading system.
 
 Contents:
@@ -9,3 +7,5 @@ KMeans: contains code related to a mean reversion algo using kmeans
 
 docker.yaml: A docker compose file for deploying the workers and server
 
+For CNN:
+https://ieeexplore.ieee.org/document/8285188

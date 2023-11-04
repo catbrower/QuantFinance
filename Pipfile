@@ -4,29 +4,19 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-numpy-fracdiff = "*"
-statsmodels = "*"
-keras-tuner = "*"
-seaborn = "*"
-tensorflow-addons = "*"
-pymongo = {extras = ["srv"], version = "*"}
+numpy = "*"
 pandas = "*"
-pywavelets = "*"
-sklearn = "*"
-scikit-learn = "*"
 matplotlib = "*"
-pyportfolioopt = "*"
-flask = "*"
-sqlalchemy = "*"
-flask-sqlalchemy = "*"
+ray = "*"
+ta-lib = "*"
 ta = "*"
-keras-tcn = "*"
-alive-progress = "*"
+scipy = "*"
+pywavelets = "*"
+statsmodels = "*"
+numba = "*"
+keras = "*"
 
 [dev-packages]
-jupyter = "*"
-notebook = "*"
-ipykernel = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.10"

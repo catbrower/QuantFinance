@@ -12,6 +12,7 @@ from ta.volatility import AverageTrueRange, BollingerBands
 from Util import *
 
 DATA_TO_DECIMAL = 4
+MINUTES_IN_DAY = 390
 
 default_indicators = {'rsi_period': 30, 'vwap_period': 46, 'atr_period': 39, 'macd_short': 21, 'macd_long': 4, 'macd_signal': 21, 'bb_period': 4, 'std': 33}
 
@@ -90,6 +91,37 @@ def to_pct(values):
 
 def column_name(ticker, name):
     return f'%s_%s' % (ticker, name)
+
+def set_time_colume_to_date(df):
+    df['time'] = pd.to_datetime(df['time'], format='%Y-%m-%d %H:%M:%S')
+    return df.set_index(['time'])
+
+# TODO check that the index is of datetime type and in correct format
+def calculate_day_and_minute_index(df):
+    df['index_day'] = pd.Series(dtype=int)
+    end_date = max(df.index)
+    date = min(df.index)
+    next_date = date + timedelta(days = 1)
+    day_number = 0
+
+    while date < end_date:
+        # data_selection
+        # Calculate daily % value change
+        selection = df[(df.index >= date) & (df.index < next_date)]
+
+        # Skip weekends + holidays
+        if len(selection) == MINUTES_IN_DAY:
+            df.loc[selection.index, 'index_day'] = int(day_number)
+            df.loc[selection.index, 'index_minute'] = np.arange(len(selection))
+            day_number += 1
+
+        date += timedelta(days = 1)
+        next_date += timedelta(days = 1)
+
+    # Filter out any rows where index_day == nan
+    df = df[df['index_day'] < float('inf')]
+    df = df.astype({'index_day': int})
+    return df
 
 # Calculate function over dataframe by day
 # return pd.Series

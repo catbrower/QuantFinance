@@ -24,7 +24,6 @@ def generate_synthetic_ohlcv_data(num_bars, x, delta=0.25, dt=0.1):
     close = []
     volume = []
 
-
     current_price = x
     for _ in range(num_bars):
         rands = norm.rvs(size = 4, scale = delta ** 2 * dt)
