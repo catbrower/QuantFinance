@@ -15,6 +15,12 @@ pywavelets = "*"
 statsmodels = "*"
 numba = "*"
 keras = "*"
+pytest = "*"
+scrapy = "*"
+selenium = "*"
+selenium-stealth = "*"
+pymongo = "*"
+tqdm = "*"
 
 [dev-packages]
 

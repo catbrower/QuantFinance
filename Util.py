@@ -4,6 +4,7 @@ import pywt
 from nolitsa import surrogates
 import numpy as np
 from statsmodels.tsa.stattools import adfuller
+from datetime import timedelta
 
 def flatten_list(collection):
     return [y for x in collection for y in x]
@@ -102,3 +103,10 @@ def dwt_denoise(data, level=5):
 # Make sure there is no na
 def aaft(returns):
     return surrogates.aaft(returns).cumsum()
+
+def weekDayGenerator(startDate, endDate):
+    currentDate = startDate
+    while currentDate < endDate:
+        if currentDate.weekday() < 5:
+            yield currentDate
+        currentDate = currentDate - timedelta(days=1)

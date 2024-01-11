@@ -1,93 +1,32 @@
 import re
-
 import ray
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.stats import skew, kurtosis, boxcox
 from ta.volume import VolumeWeightedAveragePrice
 
-from data_loader import set_time_colume_to_date, calculate_day_and_minute_index
-from Util import dwt_denoise
+from DataFrameUtil import apply_function_by_day, calculate_statistics, chunk_data_by_day
 
 PROCESSING_CHUNKS = 20
 TIME_COLUMNS = ['index_day', 'index_minute']
 
-def load_raw_data_from_multiple_csvs(files):
-    dataframes = []
-    for csv_file in files:
-        df = pd.read_csv(csv_file)
-        dataframes.append(df)
-
-    data = pd.concat(dataframes, ignore_index=True)
-    data = set_time_colume_to_date(data)
-    data = calculate_day_and_minute_index(data)
-    return data
-
-@ray.remote
-def apply_function_by_day(df, func):
-    return apply_function_by_day_sync(df, func)
-
-def apply_function_by_day_sync(df, func):
-    results = []
-    for day_data in split_daily(df):
-        results.append(func(day_data))
-    return pd.concat(results)
-
-# have to use a custom function in order to ensure that data for some day isnt' split into different chunks
-# will return multiple chunks containing multple daily data. Individual days will not be split across chunks
-def chunk_data_by_day(df, num_chunks):
-    if 'index_day' not in df.columns:
-        raise Exception('cannot chunk data by day if index_day not ini columns')
-    
-    # do it this way just in case index_day isn't contiguous for some reason
-    unique_days = pd.unique(df['index_day'])
-    split_days = np.array_split(unique_days, num_chunks)
-
-    return [df[df['index_day'].isin(split_days[i])] for i in range(len(split_days))]
-
-# split a df into parts by index_day
-# will return one df for each day
-def split_daily(df):
-    return [df[df['index_day'] == index_day] for index_day in pd.unique(df['index_day'])]
-
-# Calcualte daily stats for day
-def calculate_statistics_for_day(daily_data):
-        # filter out time columns here
-        index = pd.Series(daily_data['index_day'].iloc[0])
-        cols = [c for c in daily_data.columns if c not in TIME_COLUMNS]
-        return pd.concat([
-            pd.DataFrame({f'std_{c}': np.std(daily_data[c].dropna()) for c in cols}, index=index),
-            pd.DataFrame({f'mean_{c}': np.mean(daily_data[c].dropna()) for c in cols}, index=index),
-            pd.DataFrame({f'kurt_{c}': np.mean(kurtosis(daily_data[c].dropna())) for c in cols}, index=index),
-            pd.DataFrame({f'skew_{c}': np.mean(skew(daily_data[c].dropna())) for c in cols}, index=index)
-        ], axis=1)
-
 class PriceTuple:
-    def from_dataframe(df, zero_data=True):
+    def from_dataframe(df):
         return PriceTuple(
             df['open'],
             df['high'],
             df['low'],
             df['close'],
-            df['volume'],
-            zero_data=zero_data
+            df['volume']
         )
 
-    def __init__(self, O, H, L, C, V, zero_data=True):
+    def __init__(self, O, H, L, C, V):
         self.O = O
         self.H = H
         self.L = L
         self.C = C
         self.V = V
         self.M = (O + H + L + C) / 4
-
-        # if zero_data:
-        #     self.O -= self.O.iloc[0]
-        #     self.H -= self.H.iloc[0]
-        #     self.L -= self.L.iloc[0]
-        #     self.C -= self.C.iloc[0]
-        #     self.M -= self.M.iloc[0]
 
 class Indicator:
     STD = 'std'
@@ -174,10 +113,12 @@ class IndicatorSpec:
     def toList(self):
         return self.spec
 
+# This should represent any kind of DF that uses my custom time index, like index_day or index_minute etc
 class DataSet:
     def __init__(self, data):
         self.time_columns = ['index_minute', 'index_day']
-        self.ohlcmv_columns = ['open', 'high', 'low', 'close', 'mean', 'volume']
+        self.price_columns = ['open', 'high', 'low', 'close', 'mean']
+        self.volume_columns = ['volume']
         self.training_set_lookback = 60
 
         # TODO this isn't a good pattern
@@ -200,7 +141,7 @@ class DataSet:
     def length(self):
         return len(self.data)
     
-    def get_day_coverage(self):
+    def get_unique_days(self):
         return pd.unique(self.data['index_day'])
     
     def get_data_for_day(self, index_day):
@@ -211,6 +152,22 @@ class DataSet:
             (self.data['index_day'] >= index_day_start)
             & (self.data['index_day'] <= index_day_end)
         ]
+    
+    # return a subselection of day ex the specified indecies
+    # indecies are index_day
+    def subtract_days(self, indecies):
+        return StockData(self.data[~self.data['index_day'].isin(indecies)])
+    
+    def extract_days(self, indecies):
+        return StockData(self.data[self.data['index_day'].isin(indecies)])
+    
+    # Split the dataset on a given list of indecies, return both
+    def split_on_days(self, indecies):
+        return self.extract_days(indecies), self.subtract_days(indecies)
+
+    def get_data_for_day_and_minute(self, index_day, index_minute):
+        daily_data = self.get_data_for_day(index_day)
+        return daily_data[daily_data['index_minute'] == index_minute]
 
     def to_training_set(self):
         result = []
@@ -234,23 +191,10 @@ class DataSet:
     def plot_interday_value(self, column, index_day):
         plt.plot(self.get_data_for_day(index_day)[column])
 
-    # TODO remove
-    @ray.remote
-    def call_daily_func_on_chunk(self, chunk):
-        results = []
-        for daily_df in split_daily(chunk):
-            results.append(self.process_day(daily_df))
-
-        return pd.concat(results)
-    
-    #TODO remove
-    def process_day(self, daily_df):
-        pass
-
 class DailyStatistics(DataSet):
     def __init__(self, indicator_data):
         super().__init__(None)
-        results = [apply_function_by_day.remote(c, calculate_statistics_for_day) for c in chunk_data_by_day(indicator_data, PROCESSING_CHUNKS)]
+        results = [apply_function_by_day.remote(c, calculate_statistics) for c in chunk_data_by_day(indicator_data, PROCESSING_CHUNKS)]
         results = ray.get(results)
         results = pd.concat(results).sort_index()
         self.set_data(results)
@@ -330,11 +274,13 @@ class StockData(DataSet):
     def __init__(self, data):
         super().__init__(data)
         self.initial_columns = data.columns
+
+        # TODO check if mean is already in there (this will happen when making sub selections)
         data = self.calculate_mean(data)
         self.data = data
         self.num_days = max(data['index_day'])
 
-        # Just here for posterity
+        # Just here for convenience
         self.default_indicator_spec = IndicatorSpec([
             ('MAVG', 60),
             ('MAVG', 30)
@@ -344,6 +290,7 @@ class StockData(DataSet):
         data['mean'] = data[['open', 'high', 'low', 'close']].mean()
         return data
 
+    # TODO is there a better way to do this?
     def get_olhcv_for_day_index(self, index_day):
         return PriceTuple(
             self.data[self.data['index_day'] == index_day]['open'],
@@ -353,6 +300,39 @@ class StockData(DataSet):
             self.data[self.data['index_day'] == index_day]['volume']
         )
     
+    def price_and_volume(self):
+        return self.data[['index_day', 'index_minute', 'open', 'low', 'high', 'close', 'mean', 'volume']]
+    
+    def get_price_change(self, as_percent=False):
+        result = self.data['open'] - self.data['close']
+        if as_percent:
+            return result / self.data['open']
+        return result
+
+    # TODO add other columns
+    def to_daily(self):
+        if len(self.get_data_for_day(0)) == 1:
+            raise Exception('data is already daily')
+        
+
+        index = []
+        results = {
+            'open': [],
+            'high': [],
+            'low': [],
+            'close': []
+        }
+
+        for index_day in pd.unique(self.data['index_day']):
+            index.append(index_day)
+            results['open'].append(float(self.get_data_for_day_and_minute(index_day, 0)['open']))
+            results['close'].append(float(self.get_data_for_day_and_minute(index_day, 389)['close']))
+            results['high'].append(float(max(self.get_data_for_day(index_day)['high'])))
+            results['low'].append(float(min(self.get_data_for_day(index_day)['low'])))
+
+        return pd.DataFrame(results, index=index)
+    
+    # TODO remove, want to move ray functions out of classes 
     @ray.remote
     def compute_indicators_for_chunk(self, day_start, day_end, indicator_spec):
         results_indicator = []
@@ -366,17 +346,18 @@ class StockData(DataSet):
             pd.concat(results_stats)
         )
 
-    def normalize_indicators_for_day(data, daily_statistics, index_day):
-        norm_lookback = 5
-        for column in data.columns:
-            if column == 'index_day' or column == 'index_minute':
-                pass
+    # Removed
+    # def normalize_indicators_for_day(data, daily_statistics, index_day):
+    #     norm_lookback = 5
+    #     for column in data.columns:
+    #         if column == 'index_day' or column == 'index_minute':
+    #             pass
 
-            mean = np.mean(daily_statistics[(daily_statistics['index_day'] < index_day) & (daily_statistics['index_day'] >= index_day - norm_lookback)]['mean'])
-            std = np.mean(daily_statistics[(daily_statistics['index_day'] < index_day) & (daily_statistics['index_day'] >= index_day - norm_lookback)]['std'])
-            data[column] = (data[column] - mean) / std
+    #         mean = np.mean(daily_statistics[(daily_statistics['index_day'] < index_day) & (daily_statistics['index_day'] >= index_day - norm_lookback)]['mean'])
+    #         std = np.mean(daily_statistics[(daily_statistics['index_day'] < index_day) & (daily_statistics['index_day'] >= index_day - norm_lookback)]['std'])
+    #         data[column] = (data[column] - mean) / std
 
-        return data
+    #     return data
     
     # see TODO below, this functionality is so simple I can def put it into some kind of
     # common method
