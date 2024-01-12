@@ -162,8 +162,11 @@ class PolygonAggregateGetter():
                     if json['resultsCount'] > 0:
                         for index, item in enumerate(json['results']):
                             item['ticker'] = ticker
-                            json['results'][index] = item['ticker']
-                        db['aggregates'].insert_many(json['results'])
+                            json['results'][index] = item
+                        try:
+                            db['aggregates'].insert_many(json['results'])
+                        except Exception as err:
+                            print()
                 else:
                     self.failed.append(ticker)
 
