@@ -27,7 +27,7 @@ api_client = RESTClient(api_key=api_key)
 
 # Update flags
 update_tickers = False
-update_ticker_details = True
+update_ticker_details = False
 update_aggregates = True
 
 def weekDayGenerator(startDate, endDate):
@@ -146,6 +146,9 @@ class PolygonAggregateGetter():
         endDate = datetime(datetime.now().year, datetime.now().month, datetime.now().day)
         startDate = datetime(datetime.now().year - years_of_history, datetime.now().month, datetime.now().day)
         for ticker in tickers:
+            listDate = datetime.strptime(db['tickerDetails'].find_one({'ticker': ticker})['list_date'], '%Y-%m-%d')
+            if listDate > startDate:
+                startDate = listDate
             for day in weekDayGenerator(startDate, endDate):
                 timestamp = day.timestamp() * 1000
                 # data_does_not_exist = db['aggregates'].find_one({'ticker': ticker.upper(), 'timestamp': {'$gte': timestamp, '$lt': timestamp + 8.64e7}}) is None
@@ -157,6 +160,9 @@ class PolygonAggregateGetter():
                     json = response.json()
             #         # insert_all(json['results'], 'aggregates')
                     if json['resultsCount'] > 0:
+                        for index, item in enumerate(json['results']):
+                            item['ticker'] = ticker
+                            json['results'][index] = item['ticker']
                         db['aggregates'].insert_many(json['results'])
                 else:
                     self.failed.append(ticker)
