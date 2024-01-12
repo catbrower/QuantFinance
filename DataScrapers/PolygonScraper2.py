@@ -26,7 +26,7 @@ db = db_client['polygon']
 api_client = RESTClient(api_key=api_key)
 
 # Update flags
-update_tickers = True
+update_tickers = False
 update_ticker_details = True
 update_aggregates = True
 
@@ -96,11 +96,12 @@ class PolygonTickerDetails():
             data_does_not_exist = db['tickerDetails'].find_one({'ticker': ticker.upper()}) is None
 
             if data_does_not_exist:
-                url = polygon_url(f'/reference/tickers/{ticker.upper()}')
+                url = polygon_url(f'reference/tickers/{ticker.upper()}')
                 response = requests.get(url)
                 if response.status_code == 200:
                     json = response.json()
-                    insert_if_not_exists(json['results'], 'tickerDetails')
+                    db['tickerDetails'].insert_one(json['results'])
+                    # insert_if_not_exists(json['results'], 'tickerDetails')
                 else:
                     self.failed.append(ticker)
 
@@ -127,8 +128,8 @@ class PolygonAggregateGetter():
                 time.sleep(0.1)
 
     def get_data(self):
-        # all_tickers = [x['ticker'] for x in db['tickers'].find({})]
-        all_tickers = ['SPY']
+        all_tickers = [x['ticker'] for x in db['tickers'].find({})]
+        # all_tickers = ['SPY']
 
         status_monitor = Thread(target=self.log_status, args=[len(all_tickers)])
         status_monitor.start()
@@ -177,5 +178,3 @@ if update_ticker_details:
 if update_aggregates:
     aggregateDataGetter = PolygonAggregateGetter()
     aggregateDataGetter.get_data()
-
-print()
