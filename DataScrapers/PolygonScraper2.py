@@ -150,25 +150,26 @@ class PolygonAggregateGetter():
             if listDate > startDate:
                 startDate = listDate
             for day in weekDayGenerator(startDate, endDate):
-                timestamp = day.timestamp() * 1000
+                # timestamp = day.timestamp() * 1000
                 # data_does_not_exist = db['aggregates'].find_one({'ticker': ticker.upper(), 'timestamp': {'$gte': timestamp, '$lt': timestamp + 8.64e7}}) is None
                 # print(day)
                 # if data_does_not_exist:
-                url = polygon_aggregates_url(ticker, day, day)
-                response = requests.get(url)
-                if response.status_code == 200:
-                    json = response.json()
-            #         # insert_all(json['results'], 'aggregates')
-                    if json['resultsCount'] > 0:
-                        for index, item in enumerate(json['results']):
-                            item['ticker'] = ticker
-                            json['results'][index] = item
-                        try:
-                            db['aggregates'].insert_many(json['results'])
-                        except Exception as err:
-                            print(err)
-                else:
-                    self.failed.append(ticker)
+                try:
+                    url = polygon_aggregates_url(ticker, day, day)
+                    response = requests.get(url)
+                    if response.status_code == 200:
+                        json = response.json()
+                #         # insert_all(json['results'], 'aggregates')
+                        if json['resultsCount'] > 0:
+                            for index, item in enumerate(json['results']):
+                                item['ticker'] = ticker
+                                json['results'][index] = item
+                            
+                                db['aggregates'].insert_many(json['results'])
+                        else:
+                            self.failed.append(ticker)
+                except Exception as err:
+                    print(err)
 
                 with self._lock:
                     self.counter += 1
