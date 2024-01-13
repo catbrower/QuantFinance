@@ -166,7 +166,7 @@ class PolygonAggregateGetter():
                         try:
                             db['aggregates'].insert_many(json['results'])
                         except Exception as err:
-                            print()
+                            print(err)
                 else:
                     self.failed.append(ticker)
 
