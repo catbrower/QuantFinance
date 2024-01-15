@@ -1,6 +1,7 @@
 import sys
 import time
 import logging
+import hashlib
 import pymongo
 import requests
 import numpy as np
@@ -141,41 +142,52 @@ class PolygonAggregateGetter():
             for chunk in chunks:
                 futures.append(executor.submit(self.fetch_aggregates, chunk))
 
+        print('totally done')
+
     # Fetch ticker details
     def fetch_aggregates(self, tickers):
-        endDate = datetime(datetime.now().year, datetime.now().month, datetime.now().day)
-        startDate = datetime(datetime.now().year - years_of_history, datetime.now().month, datetime.now().day)
-        for ticker in tickers:
-            listDate = datetime.strptime(db['tickerDetails'].find_one({'ticker': ticker})['list_date'], '%Y-%m-%d')
-            if listDate > startDate:
-                startDate = listDate
-            for day in weekDayGenerator(startDate, endDate):
-                # timestamp = day.timestamp() * 1000
-                # data_does_not_exist = db['aggregates'].find_one({'ticker': ticker.upper(), 'timestamp': {'$gte': timestamp, '$lt': timestamp + 8.64e7}}) is None
-                # print(day)
-                # if data_does_not_exist:
-                try:
-                    url = polygon_aggregates_url(ticker, day, day)
-                    response = requests.get(url)
-                    if response.status_code == 200:
-                        json = response.json()
-                #         # insert_all(json['results'], 'aggregates')
-                        if json['resultsCount'] > 0:
-                            for index, item in enumerate(json['results']):
-                                item['ticker'] = ticker
-                                json['results'][index] = item
-                            
+        try:
+            endDate = datetime(datetime.now().year, datetime.now().month, datetime.now().day)
+            startDate = datetime(datetime.now().year - years_of_history, datetime.now().month, datetime.now().day)
+            for ticker in tickers:
+                tickerDetail = db['tickerDetails'].find_one({'ticker': ticker})
+                if 'list_date' in tickerDetail:
+                    listDate = datetime.strptime(tickerDetail['list_date'], '%Y-%m-%d')
+                    if listDate > startDate:
+                        startDate = listDate
+                for day in weekDayGenerator(startDate, endDate):
+                    # timestamp = day.timestamp() * 1000
+                    # data_does_not_exist = db['aggregates'].find_one({'ticker': ticker.upper(), 'timestamp': {'$gte': timestamp, '$lt': timestamp + 8.64e7}}) is None
+                    # print(day)
+                    # if data_does_not_exist:
+                    # try:
+                        url = polygon_aggregates_url(ticker, day, day)
+                        response = requests.get(url)
+                        if response.status_code == 200:
+                            json = response.json()
+                    #         # insert_all(json['results'], 'aggregates')
+                            if json['resultsCount'] > 0:
+                                x = []
+                                for index, item in enumerate(json['results']):
+                                    item['ticker'] = ticker
+                                    # item['_id'] = hashlib.md5(''.join([str(item[key]) for key in item]).encode('utf-8')).hexdigest()
+                                    json['results'][index] = item
+                                    x.append(item)
+                                
                                 db['aggregates'].insert_many(json['results'])
-                        else:
-                            self.failed.append(ticker)
-                except Exception as err:
-                    print(err)
+                            else:
+                                self.failed.append(ticker)
 
                 with self._lock:
                     self.counter += 1
 
-        for ticker in self.failed:
-            logger.error(f'Failed to fetch details for ticker {ticker}')
+            for ticker in self.failed:
+                logger.error(f'Failed to fetch details for ticker {ticker}')
+
+        except Exception as err:
+            print(err)
+
+        print('done')
 
 if update_tickers:
     for x in tqdm(api_client.list_tickers()):
