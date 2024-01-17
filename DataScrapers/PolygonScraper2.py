@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO,
 
 logger = logging.getLogger(__name__)
 
-NUM_THREADS = 12
+NUM_THREADS = 8
 years_of_history = 5
 url_base = 'https://api.polygon.io'
 api_key = 'PrCJ1R_Sa_jfqIzP_un7pjwsVcS_TTd5m_vGs1'
@@ -138,7 +138,7 @@ class PolygonAggregateGetter():
 
         chunks = np.array_split(all_tickers, NUM_THREADS)
 
-        with concurrent.futures.ThreadPoolExecutor(NUM_THREADS) as executor:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = []
             for chunk in chunks:
                 futures.append(executor.submit(self.fetch_aggregates, chunk))
@@ -152,48 +152,62 @@ class PolygonAggregateGetter():
             print('Tickers is none')
             return
         
+        if 'SPY' in tickers:
+            print()
+
         endDate = datetime(datetime.now().year, datetime.now().month, datetime.now().day)
         startDate = datetime(datetime.now().year - years_of_history, datetime.now().month, datetime.now().day)
-        for ticker in tickers:
-            try:
+        try:
+            for ticker in tickers:
                 if ticker is None:
                     print('Ticker is None')
                     continue
 
+                # Some tickers are listed recently fetch that date and check so time isn't wasted fetching
                 tickerDetail = db['tickerDetails'].find_one({'ticker': ticker})
                 if tickerDetail is not None and 'list_date' in tickerDetail:
                     listDate = datetime.strptime(tickerDetail['list_date'], '%Y-%m-%d')
                     if listDate > startDate:
                         startDate = listDate
 
+                # Fetching fails A LOT so a fetch record was created to pickup where we left off
+                # Check against this record and skip days that we already have
+                fetchRecord = [x['date'] for x in db['aggregates_fetch_record'].find({'ticker': ticker})]
+
                 if startDate is None or endDate is None:
                     print('Encounted None type date')
                     continue
 
-                for day in weekDayGenerator(startDate, endDate):
-                    # timestamp = day.timestamp() * 1000
-                    # data_does_not_exist = db['aggregates'].find_one({'ticker': ticker.upper(), 'timestamp': {'$gte': timestamp, '$lt': timestamp + 8.64e7}}) is None
-                    # print(day)
-                    # if data_does_not_exist:
-                    # try:
-                    url = polygon_aggregates_url(ticker, day, day)
-                    response = requests.get(url)
-                    if response.status_code == 200:
-                        json = response.json()
-                #         # insert_all(json['results'], 'aggregates')
-                        if 'results' in json:
-                            for index, item in enumerate(json['results']):
-                                item['ticker'] = ticker
-                                # item['_id'] = hashlib.md5(''.join([str(item[key]) for key in item]).encode('utf-8')).hexdigest()
-                                json['results'][index] = item
-                            
-                            try:
-                                db['aggregates'].insert_many(json['results'])
-                            except Exception as err:
-                                print('DB insert failed')
-                                print(err)
+                if 'I:' not in ticker and 'C:' not in ticker:
+                    for day in weekDayGenerator(startDate, endDate):
+                        strDate = day.strftime('%Y-%m-%d')
+                        if strDate in fetchRecord:
+                            continue
+
+                        # Perform fetch
+                        url = polygon_aggregates_url(ticker, day, day)
+                        response = requests.get(url)
+                        if response.status_code == 200:
+                            json = response.json()
+                            if 'results' in json:
+                                for index, item in enumerate(json['results']):
+                                    item['ticker'] = ticker
+                                    # item['_id'] = hashlib.md5(''.join([str(item[key]) for key in item]).encode('utf-8')).hexdigest()
+                                    json['results'][index] = item
+                                
+                                try:
+                                    db['aggregates'].insert_many(json['results'])
+                                    db['aggregates_fetch_record'].insert_one({
+                                        'ticker': ticker,
+                                        'date': strDate,
+                                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                        'count': json['resultsCount']
+                                    })
+                                except Exception as err:
+                                    print('DB insert failed')
+                                    print(err)
                         else:
-                            self.failed.append(ticker)
+                            print(f'Failed to get {ticker} for date {day}')
 
                 with self._lock:
                     self.counter += 1
@@ -201,9 +215,9 @@ class PolygonAggregateGetter():
                 for ticker in self.failed:
                     logger.error(f'Failed to fetch details for ticker {ticker}')
 
-            except Exception as err:
-                print(f'Processing ticker {ticker} failed on range {startDate} - {endDate}')
-                print(err)
+        except Exception as err:
+            print(f'Processing ticker {ticker} failed on range {startDate} - {endDate}')
+            print(err)
 
         print('done')
 
