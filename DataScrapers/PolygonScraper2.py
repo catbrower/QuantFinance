@@ -151,9 +151,6 @@ class PolygonAggregateGetter():
         if tickers is None:
             print('Tickers is none')
             return
-        
-        if 'SPY' in tickers:
-            print()
 
         endDate = datetime(datetime.now().year, datetime.now().month, datetime.now().day)
         startDate = datetime(datetime.now().year - years_of_history, datetime.now().month, datetime.now().day)
@@ -178,7 +175,7 @@ class PolygonAggregateGetter():
                     print('Encounted None type date')
                     continue
 
-                if 'I:' not in ticker and 'C:' not in ticker:
+                if 'I:' not in ticker and 'C:' not in ticker and 'X:' not in ticker:
                     for day in weekDayGenerator(startDate, endDate):
                         strDate = day.strftime('%Y-%m-%d')
                         if strDate in fetchRecord:
