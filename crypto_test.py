@@ -2,11 +2,16 @@
 # fetch the last two days of ETH and BTC data, buy which ever
 # has increased the most
 
+import os
 import time
 import requests
 import functools
 import pandas as pd
 from datetime import datetime, timedelta
+
+if os.getenv('FINANCE_FOLDER') is None:
+    print('The environment varaible "FINANCE_FOLDER" needs to be set to the folder where this file is')
+    quit()
 
 url_base = 'https://api.polygon.io/v2/aggs/ticker'
 url_params = 'adjusted=true&sort=asc&limit=120&apiKey=PrCJ1R_Sa_jfqIzP_un7pjwsVcS_TTd5m_vGs1'
@@ -47,7 +52,7 @@ for key in coins:
 
     coins[key]['data'] = pd.DataFrame(data).set_index('t')
 
-with open('output.txt', 'a') as file:
+with open(f'{os.getenv("FINANCE_FOLDER")}/output.txt', 'a') as file:
     if error is not None:
         file.write(f'{time.time()},{error}\n')
     else:
