@@ -1,0 +1,72 @@
+# PLACEHOLDER -- INVENTED NUMBERS. NOT FROM THE PAPER.
+# Shape mirrors Moskowitz Ooi & Pedersen (2012) Table 2 Panel A:
+# t-statistics of alphas by look-back x holding period in months.
+# Values only reproduce the qualitative pattern (strong at <=12m; decaying beyond)
+# so the comparison plumbing has something to join against.
+# Replace with the digitised table. Keep these column names and drop PLACEHOLDER
+# from the source column -- load_reference() keys off it to raise the warning.
+lookback,holding,reference_value,metric,panel,source
+1,1,3.59,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+1,3,3.69,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+1,6,3.84,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+1,9,3.69,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+1,12,3.54,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+1,24,1.74,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+1,36,1.14,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+1,48,0.54,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+3,1,3.68,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+3,3,3.78,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+3,6,3.93,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+3,9,3.78,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+3,12,3.63,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+3,24,1.83,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+3,36,1.23,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+3,48,0.63,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+6,1,3.82,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+6,3,3.92,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+6,6,4.07,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+6,9,3.92,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+6,12,3.77,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+6,24,1.97,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+6,36,1.37,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+6,48,0.77,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+9,1,3.95,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+9,3,4.05,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+9,6,4.2,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+9,9,4.05,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+9,12,3.9,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+9,24,2.1,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+9,36,1.5,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+9,48,0.9,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+12,1,3.82,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+12,3,3.92,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+12,6,4.07,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+12,9,3.92,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+12,12,3.77,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+12,24,1.97,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+12,36,1.37,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+12,48,0.77,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+24,1,1.68,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+24,3,1.78,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+24,6,1.93,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+24,9,1.78,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+24,12,1.63,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+24,24,-0.17,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+24,36,-0.77,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+24,48,-1.37,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+36,1,1.14,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+36,3,1.24,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+36,6,1.39,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+36,9,1.24,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+36,12,1.09,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+36,24,-0.71,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+36,36,-1.31,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+36,48,-1.5,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+48,1,0.6,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+48,3,0.7,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+48,6,0.85,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+48,9,0.7,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+48,12,0.55,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+48,24,-1.25,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+48,36,-1.5,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
+48,48,-1.5,alpha_tstat,A: All,PLACEHOLDER-NOT-FROM-PAPER
